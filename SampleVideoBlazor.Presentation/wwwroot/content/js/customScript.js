@@ -2,7 +2,9 @@ var session, publisher;
 
 window.initializeStream = (apiKey, sessionId, token) => {
     session = OT.initSession(apiKey, sessionId)
-    publisher = OT.initPublisher('publisher', {resolution: '1280x720'}, _ => {
+    publisher = OT.initPublisher('publisher', { insertMode: 'append',
+        width: '100%',
+        height: '100%'}, _ => {
         loadDevices();
     });
     session.connect(token, function (error) {
@@ -21,7 +23,9 @@ window.initializeStream = (apiKey, sessionId, token) => {
     session.on('streamCreated', function (event) {
         console.log('Stream created.')
         session.subscribe(event.stream, 'subscribers', {
-            insertMode: 'append'
+            insertMode: 'append',
+            width: '100%',
+            height: '100%'
         }, function (error) {
             if (error) {
                 console.error('Failed to subscribe', error);
