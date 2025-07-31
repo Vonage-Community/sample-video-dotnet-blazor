@@ -12,14 +12,14 @@
 <PageTitle>Publish your stream</PageTitle>
 
 <div class="container" style="width: 100%; padding: 40px 20px;">
-    
+
     <!-- Your Stream Section -->
     <div class="mb-40">
         <h3 class="title-secondary">Your Stream</h3>
         <p class="text-muted mb-20">
             Click Start Stream to publish your stream to the session. Your stream includes both audio and video.
         </p>
-        
+
         <div class="form-group form-group-horizontal gap-15 mb-30">
             <button class="btn-base btn-primary btn-small" @onclick="@StartStreamAsync">
                 Start stream
@@ -28,10 +28,10 @@
                 Stop stream
             </button>
         </div>
-        
+
         <!-- Publisher container -->
         <div id="publisher" class="mb-20"></div>
-        
+
         <!-- Device Selection -->
         <div class="form-group form-group-horizontal gap-15">
             <select id="cameras" class="form-input" style="flex: 1;"></select>
@@ -63,25 +63,29 @@
             You can then go to <a href="/archives">past archives</a> to
             view your archive (once its status changes to available).
         </p>
-        
+
         <div class="form-group form-group-horizontal gap-15">
-            <button class="btn-base btn-success btn-small" @onclick="@StartArchivingAsync" disabled="@isArchiving">
+            <button class="btn-base btn-success btn-small" @onclick="@StartArchivingAsync" disabled="@IsArchiving"
+                    style="@(IsArchiving ? "display:none" : "")">
                 Start archiving
             </button>
-            <button class="btn-base btn-danger btn-small" @onclick="@StopArchivingAsync" disabled="@(!isArchiving)">
+            <button class="btn-base btn-danger btn-small" @onclick="@StopArchivingAsync" disabled="@(!IsArchiving)"
+                    style="@(IsArchiving ? "" : "display:none")">
                 Stop archiving
             </button>
+
         </div>
     </div>
 
     <!-- Experience Composer Section - Only visible for publishers -->
     <div class="mb-40" style="@(IsPublisher ? "" : "display:none")">
         <h3 class="title-secondary">Experience Composer</h3>
-        
+
         <div class="form-group">
-            <textarea class="form-input" @bind="experienceComposer" placeholder="Enter URL or content for experience composer"></textarea>
+            <textarea class="form-input" @bind="experienceComposer"
+                      placeholder="Enter URL or content for experience composer"></textarea>
             <button class="btn-base btn-success btn-small" @onclick="@StartExperienceComposerAsync">
-                Add experience composer
+                Add feed to session
             </button>
         </div>
     </div>
@@ -90,7 +94,7 @@
 
 @code {
 
-    private bool isArchiving;
+    private bool IsArchiving => currentArchive.IsSome;
     private Maybe<Archive> currentArchive;
     private string experienceComposer;
     private SessionService service;
@@ -124,7 +128,10 @@
 
     private void AssignArchive(Archive result) => currentArchive = result;
 
-    private void StopArchivingAsync() => currentArchive.IfSome(StopArchiveAsync);
+    private Task StopArchivingAsync() => Task.FromResult(currentArchive.IfSomeAsync(async current =>
+    {
+        await VideoService.StopArchiveAsync(current);
+        currentArchive = Maybe<Archive>.None;
+    }));
 
-    private void StopArchiveAsync(Archive archive) => VideoService.StopArchiveAsync(archive).Wait();
 }
