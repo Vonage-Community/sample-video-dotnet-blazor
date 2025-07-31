@@ -1,0 +1,101 @@
+@page "/Archives"
+@using SampleVideoBlazor.Presentation.Data
+@using Serilog
+@using Vonage.Video.Archives
+@rendermode InteractiveServer
+@inject StateContainer StateContainer
+@inject VideoService VideoService
+@inject IJSRuntime JavascriptRuntime
+@inject NavigationManager NavigationManager
+
+<PageTitle>Video Archives</PageTitle>
+
+<div class="container" style="width: 100%; padding: 40px 20px;">
+
+    <!-- Archives List -->
+    <div class="mb-40">
+        <h3 class="title-primary">Your Archives</h3>
+        @if (!archives.Any())
+        {
+            <p class="text-muted">No archives found. Start recording a session to create your first archive.</p>
+        }
+        else
+        {
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #dee2e6;">
+                            <th style="padding: 15px; text-align: left; font-weight: 600; color: #333;">ID</th>
+                            <th style="padding: 15px; text-align: left; font-weight: 600; color: #333;">Name</th>
+                            <th style="padding: 15px; text-align: left; font-weight: 600; color: #333;">Creation Date</th>
+                            <th style="padding: 15px; text-align: left; font-weight: 600; color: #333;">Status</th>
+                            <th style="padding: 15px; text-align: left; font-weight: 600; color: #333;">Duration</th>
+                            <th style="padding: 15px; text-align: center; font-weight: 600; color: #333;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var archive in archives)
+                        {
+                            <tr style="border-bottom: 1px solid #dee2e6;">
+                                <td style="padding: 15px; color: #333;">@archive.Id</td>
+                                <td style="padding: 15px; color: #333;">@archive.Name</td>
+                                <td style="padding: 15px; color: #333;">@DateTimeOffset.FromUnixTimeMilliseconds(archive.CreatedAt).UtcDateTime</td>
+                                <td style="padding: 15px; color: #333;">@archive.Status</td>
+                                <td style="padding: 15px; color: #333;">@TimeSpan.FromSeconds(archive.Duration).ToString(@"mm\:ss")</td>
+                                <td style="padding: 15px; text-align: center;">
+                                    @if (archive.Status == "available")
+                                    {
+                                        <button class="btn-base btn-primary btn-small"
+                                                @onclick="@(() => DownloadArchive(archive.Url))">
+                                            View
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <!-- Refresh Section -->
+    <div class="mb-40">
+        <button class="btn-base btn-secondary btn-small" @onclick="LoadArchives" disabled="@isLoading">
+            @(isLoading ? "Refreshing..." : "Refresh Archives")
+        </button>
+    </div>
+
+</div>
+
+@code {
+    private List<Archive> archives = [];
+    private bool isLoading;
+    
+    protected override async Task  OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await LoadArchives(); 
+    }
+    
+    private SessionService RedirectToMainPage()
+    {
+        Log.Error("No session registered.");
+        NavigationManager.NavigateTo("/");
+        return null;
+    }
+    
+    private async Task LoadArchives()
+    {
+        isLoading = true;
+        var service = StateContainer.GetService().IfNone(RedirectToMainPage);
+        var result = await VideoService.ListArchives(service.Session);
+        archives = result.IfFailure([]).ToList();
+        isLoading = false;
+    }
+
+    private async Task DownloadArchive(string url)
+    {
+        await JavascriptRuntime.InvokeVoidAsync("open", url, "_blank");
+    }
+}

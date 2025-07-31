@@ -1,0 +1,130 @@
+@page "/Stream"
+@using SampleVideoBlazor.Presentation.Data
+@using Serilog
+@using Vonage.Common.Monads
+@using Vonage.Video.Archives
+@using Vonage.Video.Authentication
+@rendermode InteractiveServer
+@inject IJSRuntime JavascriptRuntime
+@inject VideoService VideoService
+@inject StateContainer StateContainer
+@inject NavigationManager NavigationManager
+<PageTitle>Publish your stream</PageTitle>
+
+<div class="container" style="width: 100%; padding: 40px 20px;">
+    
+    <!-- Your Stream Section -->
+    <div class="mb-40">
+        <h3 class="title-secondary">Your Stream</h3>
+        <p class="text-muted mb-20">
+            Click Start Stream to publish your stream to the session. Your stream includes both audio and video.
+        </p>
+        
+        <div class="form-group form-group-horizontal gap-15 mb-30">
+            <button class="btn-base btn-primary btn-small" @onclick="@StartStreamAsync">
+                Start stream
+            </button>
+            <button class="btn-base btn-secondary btn-small" @onclick="@StopStreamAsync">
+                Stop stream
+            </button>
+        </div>
+        
+        <!-- Publisher container -->
+        <div id="publisher" class="mb-20"></div>
+        
+        <!-- Device Selection -->
+        <div class="form-group form-group-horizontal gap-15">
+            <select id="cameras" class="form-input" style="flex: 1;"></select>
+            <select id="mics" class="form-input" style="flex: 1;"></select>
+        </div>
+    </div>
+
+    <hr class="mb-40">
+
+    <!-- Other Streams Section -->
+    <div class="mb-40">
+        <h3 class="title-secondary">Other Streams</h3>
+        <p class="text-muted mb-20">
+            This section contains all other streams from your session, meaning people and experience composer.
+        </p>
+        <div id="subscribers"></div>
+    </div>
+
+    <!-- Archive Section - Only visible for publishers -->
+    <div class="mb-40" style="@(IsPublisher ? "" : "display:none")">
+        <h3 class="title-secondary">Instructions</h3>
+        <p class="text-muted mb-20">
+            Click <strong>Start archiving</strong> to begin archiving this session.
+            All publishers in the session will be included, and all publishers that
+            join the session will be included as well.
+        </p>
+        <p class="text-muted mb-20">
+            Click <strong>Stop archiving</strong> to end archiving this session.
+            You can then go to <a href="/archives">past archives</a> to
+            view your archive (once its status changes to available).
+        </p>
+        
+        <div class="form-group form-group-horizontal gap-15">
+            <button class="btn-base btn-success btn-small" @onclick="@StartArchivingAsync" disabled="@isArchiving">
+                Start archiving
+            </button>
+            <button class="btn-base btn-danger btn-small" @onclick="@StopArchivingAsync" disabled="@(!isArchiving)">
+                Stop archiving
+            </button>
+        </div>
+    </div>
+
+    <!-- Experience Composer Section - Only visible for publishers -->
+    <div class="mb-40" style="@(IsPublisher ? "" : "display:none")">
+        <h3 class="title-secondary">Experience Composer</h3>
+        
+        <div class="form-group">
+            <textarea class="form-input" @bind="experienceComposer" placeholder="Enter URL or content for experience composer"></textarea>
+            <button class="btn-base btn-success btn-small" @onclick="@StartExperienceComposerAsync">
+                Add experience composer
+            </button>
+        </div>
+    </div>
+
+</div>
+
+@code {
+
+    private bool isArchiving;
+    private Maybe<Archive> currentArchive;
+    private string experienceComposer;
+    private SessionService service;
+
+    private bool IsPublisher => service.Role == Role.Moderator;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        service = StateContainer.GetService().IfNone(RedirectToMainPage);
+    }
+
+    private SessionService RedirectToMainPage()
+    {
+        Log.Error("No session registered.");
+        NavigationManager.NavigateTo("/");
+        return null;
+    }
+
+    private async Task StartStreamAsync() => await JavascriptRuntime.InvokeVoidAsync("initializeStream", service.Session.ApplicationId, service.Session.SessionId, service.Session.Token);
+
+    private async Task StopStreamAsync() => await JavascriptRuntime.InvokeVoidAsync("disposeStream");
+
+    private async Task StartArchivingAsync() => await VideoService.TryStartArchiving(service.Session).IfSuccess(AssignArchive);
+
+    private async Task StartExperienceComposerAsync()
+    {
+        await VideoService.StartExperienceComposerAsync(new Uri(experienceComposer), service.Session);
+        experienceComposer = string.Empty;
+    }
+
+    private void AssignArchive(Archive result) => currentArchive = result;
+
+    private void StopArchivingAsync() => currentArchive.IfSome(StopArchiveAsync);
+
+    private void StopArchiveAsync(Archive archive) => VideoService.StopArchiveAsync(archive).Wait();
+}

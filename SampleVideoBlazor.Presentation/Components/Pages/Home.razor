@@ -1,7 +1,74 @@
 ﻿@page "/"
+@page "/home"
+@using SampleVideoBlazor.Presentation.Data
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+@inject SessionFactory SessionFactory
+@inject StateContainer StateContainer
 
-<PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<PageTitle>Session Manager</PageTitle>
 
-Welcome to your new app.
+<!-- Full screen overlay -->
+<div class="modal-overlay">
+    <div class="content-card">
+        <h2 class="title-primary">Welcome to Session Manager</h2>
+        
+        <!-- Create Session Button -->
+        <div class="mb-40">
+            <button class="btn-base btn-primary" @onclick="CreateSession">
+                Create your session
+            </button>
+        </div>
+
+        <!-- Divider with bars on each side -->
+        <div class="divider">
+            <div class="divider-line divider-line-left"></div>
+            <span class="divider-text">or</span>
+            <div class="divider-line divider-line-right"></div>
+        </div>
+
+        <!-- Join Session Section -->
+        <div class="mt-40">
+            <form @onsubmit="JoinSession" @onsubmit:preventDefault="true">
+                <div class="form-group">
+                    <input type="text" 
+                           class="form-input @(inputFocused ? "input-focused" : "")"
+                           placeholder="Enter session ID" 
+                           value="@sessionId"
+                           @oninput="@((ChangeEventArgs e) => sessionId = e.Value?.ToString() ?? string.Empty)"
+                           @onfocus="@(() => inputFocused = true)"
+                           @onblur="@(() => inputFocused = false)" />
+                    <button type="submit" 
+                            class="btn-base btn-secondary"
+                            disabled="@string.IsNullOrWhiteSpace(sessionId)">
+                        Join an existing session
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+@code {
+    private string sessionId = string.Empty;
+    private bool inputFocused;
+    
+    private async Task CreateSession()
+    {
+        var session = await SessionFactory.CreateSession();
+        session.IfSuccess(StateContainer.SetService);
+        session.IfSuccess(_ => NavigationManager.NavigateTo("/Stream"));
+    }
+
+    private async Task JoinSession()
+    {
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            var session = await SessionFactory.JoinSession(sessionId);
+            session.IfSuccess(StateContainer.SetService);
+            session.IfSuccess(_ => NavigationManager.NavigateTo("/Stream"));
+        }
+    }
+}
