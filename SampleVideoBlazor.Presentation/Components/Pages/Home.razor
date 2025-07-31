@@ -1,11 +1,10 @@
 ﻿@page "/"
 @page "/home"
 @using SampleVideoBlazor.Presentation.Data
-@rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 @inject SessionFactory SessionFactory
 @inject StateContainer StateContainer
-
+@inject IToastService ToastService
 
 <PageTitle>Session Manager</PageTitle>
 
@@ -58,8 +57,9 @@
     private async Task CreateSession()
     {
         var session = await SessionFactory.CreateSession();
-        session.IfSuccess(StateContainer.SetService);
-        session.IfSuccess(_ => NavigationManager.NavigateTo("/Stream"));
+        session.Do(success => ToastService.ShowSuccess($"Session created: {success.Session.SessionId}"), failure => ToastService.ShowError($"Failed to create session: {failure.GetFailureMessage()}"));
+        session.DoWhenSuccess(StateContainer.SetService);
+        session.DoWhenSuccess(_ => NavigationManager.NavigateTo("/Stream"));
     }
 
     private async Task JoinSession()
@@ -67,8 +67,9 @@
         if (!string.IsNullOrWhiteSpace(sessionId))
         {
             var session = await SessionFactory.JoinSession(sessionId);
-            session.IfSuccess(StateContainer.SetService);
-            session.IfSuccess(_ => NavigationManager.NavigateTo("/Stream"));
+            session.Do(success => ToastService.ShowSuccess($"Session joined: {success.Session.SessionId}"), failure => ToastService.ShowError($"Failed to join session: {failure.GetFailureMessage()}"));
+            session.DoWhenSuccess(StateContainer.SetService);
+            session.DoWhenSuccess(_ => NavigationManager.NavigateTo("/Stream"));
         }
     }
 }

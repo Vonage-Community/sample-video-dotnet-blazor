@@ -12,11 +12,11 @@
     <link rel="icon" type="image/png" href="favicon.png"/>
     <script src="https://unpkg.com/@@vonage/client-sdk-video@2/dist/js/opentok.js"></script>
     <script src="/content/js/customScript.js"></script>
-    <HeadOutlet/>
+    <HeadOutlet @rendermode="@InteractiveServer" />
 </head>
 
 <body>
-<Routes/>
+<Routes @rendermode="@InteractiveServer" /> 
 <script src="_framework/blazor.web.js"></script>
 </body>
 

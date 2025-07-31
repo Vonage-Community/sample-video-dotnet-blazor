@@ -4,11 +4,11 @@
 @using Vonage.Common.Monads
 @using Vonage.Video.Archives
 @using Vonage.Video.Authentication
-@rendermode InteractiveServer
 @inject IJSRuntime JavascriptRuntime
 @inject VideoService VideoService
 @inject StateContainer StateContainer
 @inject NavigationManager NavigationManager
+@inject IToastService ToastService
 <PageTitle>Publish your stream</PageTitle>
 
 <div class="container" style="width: 100%; padding: 40px 20px;">
@@ -118,7 +118,9 @@
 
     private async Task StopStreamAsync() => await JavascriptRuntime.InvokeVoidAsync("disposeStream");
 
-    private async Task StartArchivingAsync() => await VideoService.TryStartArchiving(service.Session).IfSuccess(AssignArchive);
+    private async Task StartArchivingAsync() => await VideoService.TryStartArchiving(service.Session)
+        .DoWhenSuccess(_ => ToastService.ShowInfo("Archiving started..."))
+        .IfSuccess(AssignArchive);
 
     private async Task StartExperienceComposerAsync()
     {
@@ -128,7 +130,9 @@
 
     private void AssignArchive(Archive result) => currentArchive = result;
 
-    private Task StopArchivingAsync() => Task.FromResult(currentArchive.IfSomeAsync(async current =>
+    private Task StopArchivingAsync() => Task.FromResult(currentArchive
+        .DoWhenSome(_ => ToastService.ShowInfo("Archiving stopped..."))
+        .IfSomeAsync(async current =>
     {
         await VideoService.StopArchiveAsync(current);
         currentArchive = Maybe<Archive>.None;
